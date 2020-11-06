@@ -12,7 +12,7 @@
 #include <QOpenGLVertexArrayObject>
 #include "openvr.h"
 
-class VRRender : public QObject
+class VRRender : public QObject, QOpenGLFunctions
 {
     Q_OBJECT
     Q_PROPERTY(QImage frame READ frame NOTIFY frameChanged)
@@ -72,7 +72,6 @@ private:
     QOpenGLFramebufferObject *m_leftBuffer;
     QOpenGLFramebufferObject *m_rightBuffer;
     QOpenGLFramebufferObject *m_resolveBuffer;
-    QOpenGLFunctions *m_functions;
 
     //OpenVR
     vr::IVRSystem *m_hmd;

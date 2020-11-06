@@ -22,7 +22,6 @@ VRRender::VRRender(QObject *parent)
     ,m_leftBuffer(nullptr)
     ,m_rightBuffer(nullptr)
     ,m_resolveBuffer(nullptr)
-    ,m_functions(nullptr)
     ,m_hmd(nullptr)
     ,m_eyeWidth(0)
     ,m_eyeHeight(0)
@@ -64,10 +63,10 @@ void VRRender::initGL()
     m_surface.create();
     if(!m_surface.isValid()) qDebug("Unable to create the Offscreen surface");
     m_openGLContext.makeCurrent(&m_surface);
+    initializeOpenGLFunctions();
 
-    m_functions = m_openGLContext.functions();
-    m_functions->glEnable(GL_DEPTH_TEST);
-    m_functions->glEnable(GL_TEXTURE_2D);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
 
     m_shader = new QOpenGLShaderProgram();
     m_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/unlit.vert");
@@ -154,17 +153,15 @@ void VRRender::initVR()
 
 void VRRender::renderImage()
 {
-    if(!m_functions)
-        return;
     if (m_hmd)
     {
         updatePoses();
-        m_functions->glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
-        m_functions->glViewport(0, 0, m_eyeWidth, m_eyeHeight);
+        glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
+        glViewport(0, 0, m_eyeWidth, m_eyeHeight);
 
         QRect sourceRect(0, 0, m_eyeWidth, m_eyeHeight);
 
-        m_functions->glEnable(GL_MULTISAMPLE);
+        glEnable(GL_MULTISAMPLE);
         m_leftBuffer->bind();
         renderEye(vr::Eye_Left);
         m_leftBuffer->release();
@@ -172,7 +169,7 @@ void VRRender::renderImage()
         QOpenGLFramebufferObject::blitFramebuffer(m_resolveBuffer, targetLeft,
                                                   m_leftBuffer, sourceRect);
 
-        m_functions->glEnable(GL_MULTISAMPLE);
+        glEnable(GL_MULTISAMPLE);
         m_rightBuffer->bind();
         renderEye(vr::Eye_Right);
         m_rightBuffer->release();
@@ -202,8 +199,6 @@ void VRRender::renderImage()
 void VRRender::release()
 {
     SAFE_DELETE(m_skyTexture);
-
-    m_functions = nullptr;
     m_surface.destroy();
     if(m_vao)
         m_vao->destroy();
@@ -242,10 +237,8 @@ void VRRender::updatePoses()
 
 void VRRender::renderEye(vr::Hmd_Eye eye, bool overUnder)
 {
-    if(!m_functions)
-        return;
-    m_functions->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    m_functions->glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
     m_vao->bind();
     m_shader->bind();
@@ -254,7 +247,7 @@ void VRRender::renderEye(vr::Hmd_Eye eye, bool overUnder)
     m_shader->setUniformValue("transform", viewProjection(eye));
     m_shader->setUniformValue("leftEye", eye==vr::Eye_Left);
     m_shader->setUniformValue("overUnder", overUnder);
-    m_functions->glDrawArrays(GL_TRIANGLES, 0, m_vertCount);
+    glDrawArrays(GL_TRIANGLES, 0, m_vertCount);
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix34_t &mat)
