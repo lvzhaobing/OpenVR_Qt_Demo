@@ -40,7 +40,7 @@ private:
     void initVR();
     void release();
     void updatePoses();
-    void renderEye(vr::Hmd_Eye eye);
+    void renderEye(vr::Hmd_Eye eye, bool overUnder = false);
 
     QMatrix4x4 vrMatrixToQt(const vr::HmdMatrix34_t &mat);
     QMatrix4x4 vrMatrixToQt(const vr::HmdMatrix44_t &mat);
@@ -72,6 +72,7 @@ private:
     QOpenGLFramebufferObject *m_leftBuffer;
     QOpenGLFramebufferObject *m_rightBuffer;
     QOpenGLFramebufferObject *m_resolveBuffer;
+    QOpenGLFunctions *m_functions;
 
     //OpenVR
     vr::IVRSystem *m_hmd;
