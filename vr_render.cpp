@@ -1,8 +1,12 @@
 ﻿#include <QDebug>
 #include "vr_render.h"
+#include "modelFormats.h"
 
 const float NEAR_CLIP = 0.1f;
 const float FAR_CLIP = 10000.0f;
+
+#define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=nullptr; } }
+#define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=nullptr; } }
 
 VRRender::VRRender(QObject *parent)
     : QObject(parent)
@@ -12,27 +16,23 @@ VRRender::VRRender(QObject *parent)
     ,m_frameCount(0)
     ,m_surfaceFormat(QSurfaceFormat())
     ,m_openGLContext(nullptr)
-    ,m_fbo(nullptr)
-    ,m_vbo(nullptr), m_vao(nullptr)
     ,m_shader(nullptr)
-    ,m_texture(nullptr)
-    ,camera_pos(0.0f, 3.0f, 0.0f)
-    ,light_pos(0.0f, 5.0f, 0.0f)
+    ,m_skyTexture(nullptr)
+    ,m_vertCount(0)
+    ,m_leftBuffer(nullptr)
+    ,m_rightBuffer(nullptr)
+    ,m_resolveBuffer(nullptr)
+    ,m_hmd(nullptr)
+    ,m_eyeWidth(0)
+    ,m_eyeHeight(0)
 {
     initGL();
+    initVR();
 }
 
 VRRender::~VRRender()
 {
-    if(m_texture){
-        delete  m_texture;
-        m_texture = nullptr;
-    }
-
-    if(m_fbo){
-        delete m_fbo;
-        m_fbo = nullptr;
-    }
+    release();
 }
 
 QImage VRRender::frame() const
@@ -47,43 +47,12 @@ QSize VRRender::frameSize() const
 
 void VRRender::initGL()
 {
-
-    const GLfloat VERTEX_INIT_DATA[] = {
-        //face 1
-        -0.5f, 0.0f, -0.2887f,
-        0.0f, 0.0f, 0.5774f,
-        0.5f, 0.0f, -0.2887f,
-        //face 2
-        -0.5f, 0.0f, -0.2887f,
-        0.5f, 0.0f, -0.2887f,
-        0.0f, 0.8165f, 0.0f,
-        //face 3
-        -0.5f, 0.0f, -0.2887f,
-        0.0f, 0.8165f, 0.0f,
-        0.0f, 0.0f, 0.5774f,
-        //face 4
-        0.5f, 0.0f, -0.2887f,
-        0.0f, 0.0f, 0.5774f,
-        0.0f, 0.8165f, 0.0f,
-    };
-    const GLfloat UV_INIT_DATA[] = {
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    };
-    memcpy(this->vertexData, VERTEX_INIT_DATA, sizeof(this->vertexData));
-    memset(this->normalBuffer, 0, sizeof(this->normalBuffer));
-    computeNormalVectors(4);
-    memcpy(this->uvData, UV_INIT_DATA, sizeof(this->uvData));
-
     //   Viewport size
     m_frameSize = QSize(800,600);
     emit frameSizeChanged(m_frameSize);
     m_aspectRatio = (float)m_frameSize.width() / m_frameSize.height();
 
     //   =======CONTEXT SETUP======
-
     //   Set OpenGL version to use
     m_surfaceFormat.setMajorVersion(4);
     m_surfaceFormat.setMinorVersion(3);
@@ -97,43 +66,39 @@ void VRRender::initGL()
 
     QOpenGLFunctions *f = m_openGLContext.functions();
     f->glEnable(GL_DEPTH_TEST);
-    f->glViewport(0,0,m_frameSize.width(), m_frameSize.height());
-    m_texture = new QOpenGLTexture(QImage(":/textures/lenna.png"));
+    f->glEnable(GL_TEXTURE_2D);
+
     m_shader = new QOpenGLShaderProgram();
-    m_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/vertexShader.shader");
-    m_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/fragmentShader.shader");
+    m_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/unlit.vert");
+    m_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/unlit.frag");
     if (m_shader->link()) {
         qDebug("Shaders link success.");
     } else {
         qDebug("Shaders link failed!");
     }
+
     m_vao = new QOpenGLVertexArrayObject();
-    m_vbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_cbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_uvbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
     m_vao->create();
     m_vao->bind();
-    m_vbo->create();
-    m_vbo->bind();
-    m_vbo->allocate(this->vertexData, 4 * 3 * 3 * sizeof(GLfloat));
-    f->glEnableVertexAttribArray(0);
-    f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,3*sizeof(GLfloat), 0);
-    m_vbo->release();
-    m_cbo->create();
-    m_cbo->bind();
-    m_cbo->allocate(this->normalBuffer, 4*3*3*sizeof(GLfloat));
-    f->glEnableVertexAttribArray(1);
-    f->glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), 0);
-    m_cbo->release();
-    m_uvbo->create();
-    m_uvbo->bind();
-    m_uvbo->allocate(this->uvData, 4 * 3 * 2 * sizeof(GLfloat));
-    f->glEnableVertexAttribArray(2);
-    f->glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
-    m_uvbo->release();
-    m_vao->release();
+    QVector<GLfloat> points = readObj(":/models/sphere.obj");
+    m_vertCount = points.length();
+    qDebug() << "loaded" << m_vertCount << "verts";
 
-    renderImage();
+    m_vertexBuffer.create();
+    m_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+    m_vertexBuffer.bind();
+
+    m_vertexBuffer.allocate(points.data(), points.length() * sizeof(GLfloat));
+
+    m_shader->bind();
+
+    m_shader->setAttributeBuffer("vertex", GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
+    m_shader->enableAttributeArray("vertex");
+    m_shader->setAttributeBuffer("texCoord", GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
+    m_shader->enableAttributeArray("texCoord");
+    m_shader->setUniformValue("diffuse", 0);
+    m_skyTexture = new QOpenGLTexture(QImage(":/textures/uvmap.png"));
+
 }
 
 void VRRender::initVR()
@@ -188,96 +153,130 @@ void VRRender::initVR()
 
 void VRRender::renderImage()
 {
-
-    QOpenGLFramebufferObjectFormat fboFormat;
-    fboFormat.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
-    m_fbo = new QOpenGLFramebufferObject(m_frameSize, fboFormat);
-    m_fbo->bind();
-
     QOpenGLFunctions *f = m_openGLContext.functions();
 
-    f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    f->glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
-    m_vao->bind();
-    m_shader->bind();
-    m_texture->bind();
-    QMatrix4x4 vpMat;
-    vpMat.perspective(45.0f, m_aspectRatio, 0.1f, 1000.0f);
-    QVector3D center(0.0, 0.0, 0.0);
-    center.setY(0);
-    vpMat.lookAt(camera_pos, center, QVector3D(1.0f, 0.0f, 0.0f));
-    QMatrix4x4 modelMat;
-    float process = m_frameCount / 100.0f;
-    modelMat.rotate(40.0f * process, QVector3D(0.7f, 0.5f, 0.2f));
+    if (m_hmd)
+    {
+        updatePoses();
+        f->glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
+        f->glViewport(0, 0, m_eyeWidth, m_eyeHeight);
 
-    m_shader->setUniformValue(m_shader->uniformLocation("vpMat"), vpMat);
-    m_shader->setUniformValue(m_shader->uniformLocation("modelMat"), modelMat);
-    m_shader->setUniformValue(m_shader->uniformLocation("lightPos"), light_pos);
-    m_shader->setUniformValue(m_shader->uniformLocation("cameraPos"), camera_pos);
-    f->glDrawArrays(GL_TRIANGLES, 0, 4 * 3);
-    m_texture->release();
-    m_shader->release();
-    m_vao->release();
-    m_fbo->release();
-    m_frame = m_fbo->toImage();
-    emit frameChanged(m_frame);
+        QRect sourceRect(0, 0, m_eyeWidth, m_eyeHeight);
 
-    if(m_fbo){
-        delete m_fbo;
-        m_fbo = nullptr;
+        f->glEnable(GL_MULTISAMPLE);
+        m_leftBuffer->bind();
+        renderEye(vr::Eye_Left);
+        m_leftBuffer->release();
+        QRect targetLeft(0, 0, m_eyeWidth, m_eyeHeight);
+        QOpenGLFramebufferObject::blitFramebuffer(m_resolveBuffer, targetLeft,
+                                                  m_leftBuffer, sourceRect);
+
+        f->glEnable(GL_MULTISAMPLE);
+        m_rightBuffer->bind();
+        renderEye(vr::Eye_Right);
+        m_rightBuffer->release();
+        QRect targetRight(m_eyeWidth, 0, m_eyeWidth, m_eyeHeight);
+        QOpenGLFramebufferObject::blitFramebuffer(m_resolveBuffer, targetRight,
+                                                  m_rightBuffer, sourceRect);
     }
+
+    f->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    f->glViewport(0, 0, m_frameSize.width(), m_frameSize.height());
+    f->glDisable(GL_MULTISAMPLE);
+    renderEye(vr::Eye_Left);
+
+    if (m_hmd)
+    {
+        vr::VRTextureBounds_t leftRect = { 0.0f, 0.0f, 0.5f, 1.0f };
+        vr::VRTextureBounds_t rightRect = { 0.5f, 0.0f, 1.0f, 1.0f };
+        vr::Texture_t composite = { (void*)m_resolveBuffer->texture(), vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+
+        vr::VRCompositor()->Submit(vr::Eye_Left, &composite, &leftRect);
+        vr::VRCompositor()->Submit(vr::Eye_Right, &composite, &rightRect);
+    }
+
+    m_frame = m_leftBuffer->toImage();
+    emit frameChanged(m_frame);
 
     m_frameCount += 1;
     if(m_frameCount > 100)
         m_frameCount = 0;
 }
 
-void VRRender::computeNormalVectors(size_t num_vertices)
+void VRRender::release()
 {
-    for (size_t i=0;i<num_vertices;++i){
-        GLfloat v1x = this->vertexData[i * 9];
-        GLfloat v1y = this->vertexData[i * 9 + 1];
-        GLfloat v1z = this->vertexData[i * 9 + 2];
+    SAFE_DELETE(m_skyTexture);
 
-        GLfloat v2x = this->vertexData[i * 9 + 3];
-        GLfloat v2y = this->vertexData[i * 9 + 4];
-        GLfloat v2z = this->vertexData[i * 9 + 5];
+    if(m_vao)
+        m_vao->destroy();
+    SAFE_DELETE(m_vao);
 
-        GLfloat v3x = this->vertexData[i * 9 + 6];
-        GLfloat v3y = this->vertexData[i * 9 + 7];
-        GLfloat v3z = this->vertexData[i * 9 + 8];
+    m_vertexBuffer.destroy();
 
-        GLfloat x1 = v2x - v1x, y1 = v2y - v1y, z1 = v2z - v1z;
-        GLfloat x2 = v3x - v1x, y2 = v3y - v1y, z2 = v3z - v1z;
-        GLfloat nx = y1 *z2 - z1 * y2;
-        GLfloat ny = z1 * x2 - x1 * z2;
-        GLfloat nz = x1 * y2 - y1 * x2;
-        for (int j=0;j<3;++j){
-            this->normalBuffer[i * 9 + j * 3] = nx;
-            this->normalBuffer[i * 9 + j * 3 + 1] = ny;
-            this->normalBuffer[i * 9 + j * 3 + 2] = nz;
+    SAFE_DELETE(m_shader);
+    SAFE_DELETE(m_leftBuffer);
+    SAFE_DELETE(m_rightBuffer);
+    SAFE_DELETE(m_resolveBuffer);
+
+    if(m_hmd){
+        vr::VR_Shutdown();
+        m_hmd = nullptr;
+    }
+}
+
+void VRRender::updatePoses()
+{
+    vr::VRCompositor()->WaitGetPoses(m_trackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+
+    for (unsigned int i=0; i<vr::k_unMaxTrackedDeviceCount; i++)
+    {
+        if (m_trackedDevicePose[i].bPoseIsValid)
+        {
+            m_matrixDevicePose[i] =  vrMatrixToQt(m_trackedDevicePose[i].mDeviceToAbsoluteTracking);
         }
     }
+
+    if (m_trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+    {
+        m_hmdPose = m_matrixDevicePose[vr::k_unTrackedDeviceIndex_Hmd].inverted();
+    }
+}
+
+void VRRender::renderEye(vr::Hmd_Eye eye)
+{
+    QOpenGLFunctions *f = m_openGLContext.functions();
+
+    f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    f->glEnable(GL_DEPTH_TEST);
+
+    m_vao->bind();
+    m_shader->bind();
+    m_skyTexture->bind(0);
+
+    m_shader->setUniformValue("transform", viewProjection(eye));
+    m_shader->setUniformValue("leftEye", eye==vr::Eye_Left);
+    m_shader->setUniformValue("overUnder", false);
+    f->glDrawArrays(GL_TRIANGLES, 0, m_vertCount);
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix34_t &mat)
 {
     return QMatrix4x4(
-        mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
-        mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
-        mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
-        0.0,         0.0,         0.0,         1.0f
-    );
+                mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
+            mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
+            mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
+            0.0,         0.0,         0.0,         1.0f
+            );
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix44_t &mat)
 {
     return QMatrix4x4(
-        mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
-        mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
-        mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
-        mat.m[3][0], mat.m[3][1], mat.m[3][2], mat.m[3][3]
-    );
+                mat.m[0][0], mat.m[0][1], mat.m[0][2], mat.m[0][3],
+            mat.m[1][0], mat.m[1][1], mat.m[1][2], mat.m[1][3],
+            mat.m[2][0], mat.m[2][1], mat.m[2][2], mat.m[2][3],
+            mat.m[3][0], mat.m[3][1], mat.m[3][2], mat.m[3][3]
+            );
 }
 
 void VRRender::glUniformMatrix4(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)

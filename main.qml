@@ -24,4 +24,8 @@ Window {
             render.renderImage();
         }
     }
+
+    Component.onCompleted: {
+        render.renderImage();
+    }
 }

@@ -28,17 +28,19 @@ public:
     QSize frameSize() const;
 
 public slots:
-    void initGL();
-    void initVR();
+
     void renderImage();
 
 signals:
     void frameChanged(QImage frame);
-
     void frameSizeChanged(QSize frameSize);
 
 private:
-    void computeNormalVectors(size_t);
+    void initGL();
+    void initVR();
+    void release();
+    void updatePoses();
+    void renderEye(vr::Hmd_Eye eye);
 
     QMatrix4x4 vrMatrixToQt(const vr::HmdMatrix34_t &mat);
     QMatrix4x4 vrMatrixToQt(const vr::HmdMatrix44_t &mat);
@@ -62,15 +64,14 @@ private:
     QSurfaceFormat m_surfaceFormat;
     QOpenGLContext m_openGLContext;
     QOffscreenSurface m_surface;
-    QOpenGLFramebufferObject *m_fbo;
-    QOpenGLBuffer *m_vbo, *m_cbo, *m_uvbo;
-    QOpenGLVertexArrayObject *m_vao;
     QOpenGLShaderProgram *m_shader;
-    QOpenGLTexture *m_texture;
-    GLfloat normalBuffer[4 * 3 *3];
-    GLfloat vertexData[4 * 3 * 3];
-    GLfloat uvData[4 * 3 * 2];
-    QVector3D camera_pos, light_pos;
+    QOpenGLBuffer m_vertexBuffer;
+    QOpenGLVertexArrayObject *m_vao;
+    QOpenGLTexture *m_skyTexture;
+    int m_vertCount;
+    QOpenGLFramebufferObject *m_leftBuffer;
+    QOpenGLFramebufferObject *m_rightBuffer;
+    QOpenGLFramebufferObject *m_resolveBuffer;
 
     //OpenVR
     vr::IVRSystem *m_hmd;
@@ -82,9 +83,7 @@ private:
     QMatrix4x4 m_hmdPose;
 
     uint32_t m_eyeWidth, m_eyeHeight;
-    QOpenGLFramebufferObject *m_leftBuffer;
-    QOpenGLFramebufferObject *m_rightBuffer;
-    QOpenGLFramebufferObject *m_resolveBuffer;
+
 };
 
 #endif // VRRENDER_H

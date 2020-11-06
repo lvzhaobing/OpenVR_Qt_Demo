@@ -5,9 +5,7 @@
         <file>textures/uvmap.png</file>
         <file>textures/vrbg.png</file>
         <file>models/sphere.obj</file>
-        <file>shaders/fragmentShader.shader</file>
         <file>shaders/unlit.frag</file>
         <file>shaders/unlit.vert</file>
-        <file>shaders/vertexShader.shader</file>
     </qresource>
 </RCC>
