@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>textures/lenna.png</file>
+        <file>textures/lena.png</file>
         <file>textures/uvmap.png</file>
         <file>textures/vrbg.png</file>
         <file>models/sphere.obj</file>

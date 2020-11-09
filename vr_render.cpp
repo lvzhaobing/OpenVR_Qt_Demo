@@ -17,7 +17,13 @@ VRRender::VRRender(QObject *parent)
     ,m_surfaceFormat(QSurfaceFormat())
     ,m_openGLContext(nullptr)
     ,m_shader(nullptr)
+    ,m_vao(nullptr)
+    ,m_skyBoxObj(nullptr)
     ,m_skyTexture(nullptr)
+    ,m_caliBallObj(nullptr)
+    ,m_caliBallTexture(nullptr)
+    ,m_cbo(nullptr)
+    ,m_uvbo(nullptr)
     ,m_vertCount(0)
     ,m_leftBuffer(nullptr)
     ,m_rightBuffer(nullptr)
@@ -47,15 +53,41 @@ QSize VRRender::frameSize() const
 
 void VRRender::initGL()
 {
+    const GLfloat VERTEX_INIT_DATA[] = {
+        //face 1
+        -0.5f, 0.0f, -0.2887f,
+        0.0f, 0.0f, 0.5774f,
+        0.5f, 0.0f, -0.2887f,
+        //face 2
+        -0.5f, 0.0f, -0.2887f,
+        0.5f, 0.0f, -0.2887f,
+        0.0f, 0.8165f, 0.0f,
+        //face 3
+        -0.5f, 0.0f, -0.2887f,
+        0.0f, 0.8165f, 0.0f,
+        0.0f, 0.0f, 0.5774f,
+        //face 4
+        0.5f, 0.0f, -0.2887f,
+        0.0f, 0.0f, 0.5774f,
+        0.0f, 0.8165f, 0.0f,
+    };
+    const GLfloat UV_INIT_DATA[] = {
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    };
+
+    memcpy(this->vertexData, VERTEX_INIT_DATA, sizeof(this->vertexData));
+    memset(this->normalBuffer, 0, sizeof(this->normalBuffer));
+    computeNormalVectors(4);
+
     //   Viewport size
     m_frameSize = QSize(800,600);
     emit frameSizeChanged(m_frameSize);
     m_aspectRatio = (float)m_frameSize.width() / m_frameSize.height();
 
     //   =======CONTEXT SETUP======
-    //   Set OpenGL version to use
-    m_surfaceFormat.setMajorVersion(4);
-    m_surfaceFormat.setMinorVersion(3);
     m_openGLContext.setFormat(m_surfaceFormat);
     m_openGLContext.create();
     if(!m_openGLContext.isValid()) qDebug("Unable to create context");
@@ -80,24 +112,47 @@ void VRRender::initGL()
     m_vao = new QOpenGLVertexArrayObject();
     m_vao->create();
     m_vao->bind();
+
     QVector<GLfloat> points = readObj(":/models/sphere.obj");
     m_vertCount = points.length();
-    qDebug() << "loaded" << m_vertCount << "verts";
 
-    m_vertexBuffer.create();
-    m_vertexBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    m_vertexBuffer.bind();
+    m_skyBoxObj = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
+    m_skyBoxObj->create();
+    m_skyBoxObj->bind();
+    m_skyBoxObj->allocate(points.data(), points.length() * sizeof(GLfloat));
 
-    m_vertexBuffer.allocate(points.data(), points.length() * sizeof(GLfloat));
+    m_caliBallObj = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
+    m_caliBallObj->create();
+    m_caliBallObj->bind();
+    m_caliBallObj->allocate(this->vertexData, 4 * 3 * 3 * sizeof(GLfloat));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,3*sizeof(GLfloat), 0);
+    m_caliBallObj->release();
+
+    m_cbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
+    m_cbo->create();
+    m_cbo->bind();
+    m_cbo->allocate(this->normalBuffer, 4*3*3*sizeof(GLfloat));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), 0);
+    m_cbo->release();
+
+    m_uvbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
+    m_uvbo->create();
+    m_uvbo->bind();
+    m_uvbo->allocate(this->uvData, 4 * 3 * 2 * sizeof(GLfloat));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
+    m_uvbo->release();
+    m_vao->release();
 
     m_shader->bind();
-
     m_shader->setAttributeBuffer("vertex", GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
     m_shader->enableAttributeArray("vertex");
     m_shader->setAttributeBuffer("texCoord", GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
     m_shader->enableAttributeArray("texCoord");
     m_shader->setUniformValue("diffuse", 0);
-    m_skyTexture = new QOpenGLTexture(QImage(":/textures/uvmap.png"));
+    m_caliBallTexture = new QOpenGLTexture(QImage(":/textures/lena.png"));
 
 }
 
@@ -156,6 +211,7 @@ void VRRender::renderImage()
     if (m_hmd)
     {
         updatePoses();
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
         glViewport(0, 0, m_eyeWidth, m_eyeHeight);
 
@@ -188,7 +244,7 @@ void VRRender::renderImage()
         vr::VRCompositor()->Submit(vr::Eye_Right, &composite, &rightRect);
     }
 
-    m_frame = m_resolveBuffer->toImage();
+    m_frame = m_leftBuffer->toImage();
     emit frameChanged(m_frame);
 
     m_frameCount += 1;
@@ -198,13 +254,23 @@ void VRRender::renderImage()
 
 void VRRender::release()
 {
-    SAFE_DELETE(m_skyTexture);
+    SAFE_DELETE(m_caliBallTexture);
     m_surface.destroy();
     if(m_vao)
         m_vao->destroy();
     SAFE_DELETE(m_vao);
 
-    m_vertexBuffer.destroy();
+    if(m_caliBallObj)
+        m_caliBallObj->destroy();
+    SAFE_DELETE(m_caliBallObj);
+
+    if(m_cbo)
+        m_cbo->destroy();
+    SAFE_DELETE(m_cbo);
+
+    if(m_uvbo)
+        m_uvbo->destroy();
+    SAFE_DELETE(m_uvbo);
 
     SAFE_DELETE(m_shader);
     SAFE_DELETE(m_leftBuffer);
@@ -242,12 +308,16 @@ void VRRender::renderEye(vr::Hmd_Eye eye, bool overUnder)
 
     m_vao->bind();
     m_shader->bind();
-    m_skyTexture->bind(0);
+    m_caliBallTexture->bind(0);
 
     m_shader->setUniformValue("transform", viewProjection(eye));
     m_shader->setUniformValue("leftEye", eye==vr::Eye_Left);
     m_shader->setUniformValue("overUnder", overUnder);
     glDrawArrays(GL_TRIANGLES, 0, m_vertCount);
+    m_caliBallTexture->release();
+    m_shader->release();
+    m_vao->release();
+
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix34_t &mat)
@@ -275,15 +345,12 @@ void VRRender::glUniformMatrix4(GLint location, GLsizei count, GLboolean transpo
     m_openGLContext.functions()->glUniformMatrix4fv(location, count, transpose, value);
 }
 
-QMatrix4x4 VRRender::viewProjection(vr::Hmd_Eye eye)
+QMatrix4x4 VRRender::viewProjection(vr::Hmd_Eye eye, QMatrix4x4 matrix)
 {
-    QMatrix4x4 s;
-    s.scale(1000.0f);
-
     if (eye == vr::Eye_Left)
-        return m_leftProjection * m_leftPose * m_hmdPose * s;
+        return m_leftProjection * m_leftPose * m_hmdPose * matrix;
     else
-        return m_rightProjection * m_rightPose * m_hmdPose * s;
+        return m_rightProjection * m_rightPose * m_hmdPose * matrix;
 }
 
 QString VRRender::getTrackedDeviceString(vr::TrackedDeviceIndex_t device, vr::TrackedDeviceProperty prop, vr::TrackedPropertyError *error)
@@ -299,4 +366,37 @@ QString VRRender::getTrackedDeviceString(vr::TrackedDeviceIndex_t device, vr::Tr
     delete [] buf;
 
     return result;
+}
+
+void VRRender::computeNormalVectors(size_t num_vertices)
+{
+    for (size_t i=0;i<num_vertices;++i){
+        GLfloat v1x = this->vertexData[i * 9];
+        GLfloat v1y = this->vertexData[i * 9 + 1];
+        GLfloat v1z = this->vertexData[i * 9 + 2];
+
+        GLfloat v2x = this->vertexData[i * 9 + 3];
+        GLfloat v2y = this->vertexData[i * 9 + 4];
+        GLfloat v2z = this->vertexData[i * 9 + 5];
+
+        GLfloat v3x = this->vertexData[i * 9 + 6];
+        GLfloat v3y = this->vertexData[i * 9 + 7];
+        GLfloat v3z = this->vertexData[i * 9 + 8];
+
+        GLfloat x1 = v2x - v1x, y1 = v2y - v1y, z1 = v2z - v1z;
+        GLfloat x2 = v3x - v1x, y2 = v3y - v1y, z2 = v3z - v1z;
+        GLfloat nx = y1 * z2 - z1 * y2;
+        GLfloat ny = z1 * x2 - x1 * z2;
+        GLfloat nz = x1 * y2 - y1 * x2;
+        for (int j=0;j<3;++j){
+            this->normalBuffer[i * 9 + j * 3] = nx;
+            this->normalBuffer[i * 9 + j * 3 + 1] = ny;
+            this->normalBuffer[i * 9 + j * 3 + 2] = nz;
+        }
+    }
+}
+
+QVector<GLfloat> VRRender::drawCircle(float x, float y, float z, float r, int lineSegmentCount)
+{
+    return QVector<GLfloat>();
 }
