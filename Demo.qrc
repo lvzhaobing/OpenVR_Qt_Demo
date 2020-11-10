@@ -2,17 +2,9 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>image/face.png</file>
-        <file>shader/basic_lighting.frag</file>
-        <file>shader/basic_lighting.vert</file>
-        <file>shader/colortriangle.frag</file>
-        <file>shader/colortriangle.vert</file>
-        <file>shader/lamp.frag</file>
-        <file>shader/lamp.vert</file>
-        <file>shader/lighting_maps.frag</file>
-        <file>shader/lighting_maps.vert</file>
-        <file>shader/textures.frag</file>
-        <file>shader/textures.vert</file>
-        <file>shader/triangle.frag</file>
-        <file>shader/triangle.vert</file>
+        <file>shader/shader.frag</file>
+        <file>shader/shader.vert</file>
+        <file>image/point.png</file>
+        <file>image/red_point.png</file>
     </qresource>
 </RCC>

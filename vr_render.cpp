@@ -91,7 +91,7 @@ void VRRender::initGL()
 
     // load textures (we now use a utility function to keep the code more organized)
     // -----------------------------------------------------------------------------
-    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/face.png"), QOpenGLTexture::GenerateMipMaps);
+    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/red_point.png"), QOpenGLTexture::GenerateMipMaps);
     m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
     m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
     m_pDiffuseMap->setMinificationFilter(QOpenGLTexture::Linear);
@@ -237,7 +237,11 @@ void VRRender::updatePoses()
 void VRRender::renderEye(vr::Hmd_Eye eye)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);        //启用混合状态
+    glEnable(GL_DEPTH_TEST);    //启用深度检测
+    glEnable(GL_ALPHA_TEST);  // Enable Alpha Testing (To Make BlackTansparent)
+    glAlphaFunc(GL_GREATER, 0.1f);  // Set Alpha Testing (To Make Black Transparent)
+
     // be sure to activate shader when setting uniforms/drawing objects
     lightingShader.bind();
     lightingShader.setUniformValue("light.position", lightPos);
@@ -336,13 +340,13 @@ QVector<GLfloat> VRRender::drawCircle(float x, float y, float z, float r, int li
 
 bool VRRender::createShader()
 {
-    bool success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/lighting_maps.vert");
+    bool success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/shader.vert");
     if (!success) {
         qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lightingShader.log();
         return success;
     }
 
-    success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/lighting_maps.frag");
+    success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/shader.frag");
     if (!success) {
         qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lightingShader.log();
         return success;

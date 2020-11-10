@@ -40,7 +40,7 @@ INCLUDEPATH += $$PWD/openvr/headers
 
 win32 {
         LIBS += -L$$PWD/openvr/lib/win64/ \
-                -lopenvr_api
+                -lopenvr_api -lopengl32
     CONFIG(debug, debug|release) {
         DESTDIR = $$PWD/../debug/
     } else {
