@@ -34,7 +34,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     image_view.h \
-    modelformats.h \
     vr_render.h
 
 INCLUDEPATH += $$PWD/openvr/headers

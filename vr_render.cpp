@@ -1,6 +1,5 @@
 ﻿#include <QDebug>
 #include "vr_render.h"
-#include "modelFormats.h"
 
 const float NEAR_CLIP = 0.1f;
 const float FAR_CLIP = 10000.0f;
@@ -8,52 +7,19 @@ const float FAR_CLIP = 10000.0f;
 #define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=nullptr; } }
 #define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=nullptr; } }
 
+
+const float CALIB_DEPTH = 10.0f;
 // lighting
-static QVector3D lightPos(1.2f, 1.0f, 2.0f);
+static QVector3D lightPos(1.2f, 1.0f, -2.0f);
 
 const float vertices[] = {
     // positions          // normals           // texture coords
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-    0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-    0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-    0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-    0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
-    0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-    0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-    0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-    0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-    0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-    0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-    0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-    0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-    0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-    0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-    0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-    0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
+    -0.5f, -0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  0.0f, 1.0f,
+    0.5f, -0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  1.0f, 1.0f,
+    0.5f, 0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  1.0f, 0.0f,
+    0.5f, 0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  1.0f, 0.0f,
+    -0.5f, 0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  0.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f,  0.0f,  0.0f, 1.0f,  0.0f, 1.0f
 };
 
 
@@ -123,25 +89,13 @@ void VRRender::initGL()
         glEnableVertexAttribArray(2);
     }
 
-    {
-        QOpenGLVertexArrayObject::Binder vaoBind(&lightVAO);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-    }
-
     // load textures (we now use a utility function to keep the code more organized)
     // -----------------------------------------------------------------------------
-    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/container2.png"), QOpenGLTexture::GenerateMipMaps);
+    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/face.png"), QOpenGLTexture::GenerateMipMaps);
     m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
     m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
     m_pDiffuseMap->setMinificationFilter(QOpenGLTexture::Linear);
     m_pDiffuseMap->setMagnificationFilter(QOpenGLTexture::Linear);
-
-    m_pSpecularMap = std::make_unique<QOpenGLTexture>(QImage(":/image/container2_specular.png"), QOpenGLTexture::GenerateMipMaps);
-    m_pSpecularMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
-    m_pSpecularMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
-    m_pSpecularMap->setMinificationFilter(QOpenGLTexture::Linear);
-    m_pSpecularMap->setMagnificationFilter(QOpenGLTexture::Linear);
 
     // shader configuration
     // --------------------
@@ -242,7 +196,7 @@ void VRRender::renderImage()
         vr::VRCompositor()->Submit(vr::Eye_Right, &composite, &rightRect);
     }
 
-    m_frame = m_resolveBuffer->toImage();
+    m_frame = m_leftBuffer->toImage();
     emit frameChanged(m_frame);
 
     m_frameCount += 1;
@@ -288,20 +242,20 @@ void VRRender::renderEye(vr::Hmd_Eye eye)
     lightingShader.bind();
     lightingShader.setUniformValue("light.position", lightPos);
 
-    QMatrix4x4 model, view, projection;
-    if(eye == vr::Hmd_Eye::Eye_Left){
-        view = m_leftPose * m_hmdPose;
-        projection = m_leftProjection;
-    } else {
-        view = m_rightPose * m_hmdPose;
-        projection = m_rightProjection;
-    }
-
+    QVector4D hmdPosition;
     QVector4D eyePosition;
-    if(eye == vr::Hmd_Eye::Eye_Left)
-        eyePosition = view * QVector4D(0,0,0,1.0);
-    else
-        eyePosition = view * QVector4D(0,0,0,1.0);
+    QMatrix4x4 model, view, projection;
+    model = m_hmdPose.inverted() * model;
+    model.translate(0,0,-CALIB_DEPTH);
+    if(eye == vr::Hmd_Eye::Eye_Left){
+        projection = m_leftProjection;
+        view = m_leftPose * m_hmdPose;
+    } else {
+        projection = m_rightProjection;
+        view = m_rightPose * m_hmdPose;
+    }
+    hmdPosition = m_hmdPose * QVector4D(0.0f, 0.0f, 0.0f, 1.0f);
+    eyePosition = view * QVector4D(0.0f, 0.0f, 0.0f, 1.0f);
 
     lightingShader.setUniformValue("viewPos",  eyePosition);
 
@@ -320,30 +274,11 @@ void VRRender::renderEye(vr::Hmd_Eye eye)
     glActiveTexture(GL_TEXTURE0);
     m_pDiffuseMap->bind();
 
-    // bind specular map
-    glActiveTexture(GL_TEXTURE1);
-    m_pSpecularMap->bind();
-
     {// render the cube
         QOpenGLVertexArrayObject::Binder vaoBind(&cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     lightingShader.release();
-
-
-    // also draw the lamp object
-    lampShader.bind();
-    lampShader.setUniformValue("projection", projection);
-    lampShader.setUniformValue("view", view);
-    model = QMatrix4x4();
-    model.translate(lightPos);
-    model.scale(0.2f); // a smaller cube
-    lampShader.setUniformValue("model", model);
-    {
-        QOpenGLVertexArrayObject::Binder vaoBind(&lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    }
-    lampShader.release();
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix34_t &mat)
@@ -416,23 +351,6 @@ bool VRRender::createShader()
     success = lightingShader.link();
     if(!success) {
         qDebug() << "shaderProgram link failed!" << lightingShader.log();
-    }
-
-    success = lampShader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/lamp.vert");
-    if (!success) {
-        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lampShader.log();
-        return success;
-    }
-
-    success = lampShader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/lamp.frag");
-    if (!success) {
-        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lampShader.log();
-        return success;
-    }
-
-    success = lampShader.link();
-    if(!success) {
-        qDebug() << "shaderProgram link failed!" << lampShader.log();
     }
 
     return success;

@@ -1,11 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>image/awesomeface.png</file>
-        <file>image/container.jpg</file>
-        <file>image/container2.png</file>
-        <file>image/container2_specular.png</file>
-        <file>image/wall.jpg</file>
+        <file>image/face.png</file>
         <file>shader/basic_lighting.frag</file>
         <file>shader/basic_lighting.vert</file>
         <file>shader/colortriangle.frag</file>
