@@ -1,0 +1,22 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>image/awesomeface.png</file>
+        <file>image/container.jpg</file>
+        <file>image/container2.png</file>
+        <file>image/container2_specular.png</file>
+        <file>image/wall.jpg</file>
+        <file>shader/basic_lighting.frag</file>
+        <file>shader/basic_lighting.vert</file>
+        <file>shader/colortriangle.frag</file>
+        <file>shader/colortriangle.vert</file>
+        <file>shader/lamp.frag</file>
+        <file>shader/lamp.vert</file>
+        <file>shader/lighting_maps.frag</file>
+        <file>shader/lighting_maps.vert</file>
+        <file>shader/textures.frag</file>
+        <file>shader/textures.vert</file>
+        <file>shader/triangle.frag</file>
+        <file>shader/triangle.vert</file>
+    </qresource>
+</RCC>

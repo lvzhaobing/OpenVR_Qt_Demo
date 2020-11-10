@@ -8,6 +8,55 @@ const float FAR_CLIP = 10000.0f;
 #define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=nullptr; } }
 #define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=nullptr; } }
 
+// lighting
+static QVector3D lightPos(1.2f, 1.0f, 2.0f);
+
+const float vertices[] = {
+    // positions          // normals           // texture coords
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+    0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+    0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+    0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+    0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
+    0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+    0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+
+    0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+    0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+    0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+    0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+    0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+    0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+    0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+    0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+    0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+    0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+    0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
+};
+
+
 VRRender::VRRender(QObject *parent)
     : QObject(parent)
     ,m_frame(QImage())
@@ -16,22 +65,18 @@ VRRender::VRRender(QObject *parent)
     ,m_frameCount(0)
     ,m_surfaceFormat(QSurfaceFormat())
     ,m_openGLContext(nullptr)
-    ,m_shader(nullptr)
-    ,m_vao(nullptr)
-    ,m_skyBoxObj(nullptr)
-    ,m_skyTexture(nullptr)
-    ,m_caliBallObj(nullptr)
-    ,m_caliBallTexture(nullptr)
-    ,m_cbo(nullptr)
-    ,m_uvbo(nullptr)
-    ,m_vertCount(0)
+    ,m_hmd(nullptr)
     ,m_leftBuffer(nullptr)
     ,m_rightBuffer(nullptr)
     ,m_resolveBuffer(nullptr)
-    ,m_hmd(nullptr)
     ,m_eyeWidth(0)
     ,m_eyeHeight(0)
 {
+    //   Viewport size
+    m_frameSize = QSize(1024,768);
+    emit frameSizeChanged(m_frameSize);
+    m_aspectRatio = (float)m_frameSize.width() / m_frameSize.height();
+
     initGL();
     initVR();
 }
@@ -53,40 +98,6 @@ QSize VRRender::frameSize() const
 
 void VRRender::initGL()
 {
-    const GLfloat VERTEX_INIT_DATA[] = {
-        //face 1
-        -0.5f, 0.0f, -0.2887f,
-        0.0f, 0.0f, 0.5774f,
-        0.5f, 0.0f, -0.2887f,
-        //face 2
-        -0.5f, 0.0f, -0.2887f,
-        0.5f, 0.0f, -0.2887f,
-        0.0f, 0.8165f, 0.0f,
-        //face 3
-        -0.5f, 0.0f, -0.2887f,
-        0.0f, 0.8165f, 0.0f,
-        0.0f, 0.0f, 0.5774f,
-        //face 4
-        0.5f, 0.0f, -0.2887f,
-        0.0f, 0.0f, 0.5774f,
-        0.0f, 0.8165f, 0.0f,
-    };
-    const GLfloat UV_INIT_DATA[] = {
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    };
-
-    memcpy(this->vertexData, VERTEX_INIT_DATA, sizeof(this->vertexData));
-    memset(this->normalBuffer, 0, sizeof(this->normalBuffer));
-    computeNormalVectors(4);
-
-    //   Viewport size
-    m_frameSize = QSize(800,600);
-    emit frameSizeChanged(m_frameSize);
-    m_aspectRatio = (float)m_frameSize.width() / m_frameSize.height();
-
     //   =======CONTEXT SETUP======
     m_openGLContext.setFormat(m_surfaceFormat);
     m_openGLContext.create();
@@ -97,63 +108,50 @@ void VRRender::initGL()
     m_openGLContext.makeCurrent(&m_surface);
     initializeOpenGLFunctions();
 
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_2D);
+    createShader();
+    vbo.create();
+    vbo.bind();
+    vbo.allocate(vertices, sizeof(vertices));
 
-    m_shader = new QOpenGLShaderProgram();
-    m_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/unlit.vert");
-    m_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/unlit.frag");
-    if (m_shader->link()) {
-        qDebug("Shaders link success.");
-    } else {
-        qDebug("Shaders link failed!");
+    {
+        QOpenGLVertexArrayObject::Binder vaoBind(&cubeVAO);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
     }
 
-    m_vao = new QOpenGLVertexArrayObject();
-    m_vao->create();
-    m_vao->bind();
+    {
+        QOpenGLVertexArrayObject::Binder vaoBind(&lightVAO);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+    }
 
-    QVector<GLfloat> points = readObj(":/models/sphere.obj");
-    m_vertCount = points.length();
+    // load textures (we now use a utility function to keep the code more organized)
+    // -----------------------------------------------------------------------------
+    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/container2.png"), QOpenGLTexture::GenerateMipMaps);
+    m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
+    m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
+    m_pDiffuseMap->setMinificationFilter(QOpenGLTexture::Linear);
+    m_pDiffuseMap->setMagnificationFilter(QOpenGLTexture::Linear);
 
-    m_skyBoxObj = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_skyBoxObj->create();
-    m_skyBoxObj->bind();
-    m_skyBoxObj->allocate(points.data(), points.length() * sizeof(GLfloat));
+    m_pSpecularMap = std::make_unique<QOpenGLTexture>(QImage(":/image/container2_specular.png"), QOpenGLTexture::GenerateMipMaps);
+    m_pSpecularMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
+    m_pSpecularMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
+    m_pSpecularMap->setMinificationFilter(QOpenGLTexture::Linear);
+    m_pSpecularMap->setMagnificationFilter(QOpenGLTexture::Linear);
 
-    m_caliBallObj = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_caliBallObj->create();
-    m_caliBallObj->bind();
-    m_caliBallObj->allocate(this->vertexData, 4 * 3 * 3 * sizeof(GLfloat));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,3*sizeof(GLfloat), 0);
-    m_caliBallObj->release();
+    // shader configuration
+    // --------------------
+    lightingShader.bind();
+    lightingShader.setUniformValue("material.diffuse", 0);
+    lightingShader.setUniformValue("material.specular", 1);
+    lightingShader.release();
 
-    m_cbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_cbo->create();
-    m_cbo->bind();
-    m_cbo->allocate(this->normalBuffer, 4*3*3*sizeof(GLfloat));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), 0);
-    m_cbo->release();
-
-    m_uvbo = new QOpenGLBuffer(QOpenGLBuffer::Type::VertexBuffer);
-    m_uvbo->create();
-    m_uvbo->bind();
-    m_uvbo->allocate(this->uvData, 4 * 3 * 2 * sizeof(GLfloat));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2*sizeof(GLfloat), 0);
-    m_uvbo->release();
-    m_vao->release();
-
-    m_shader->bind();
-    m_shader->setAttributeBuffer("vertex", GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
-    m_shader->enableAttributeArray("vertex");
-    m_shader->setAttributeBuffer("texCoord", GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
-    m_shader->enableAttributeArray("texCoord");
-    m_shader->setUniformValue("diffuse", 0);
-    m_caliBallTexture = new QOpenGLTexture(QImage(":/textures/lena.png"));
-
+    vbo.release();
+    glEnable(GL_DEPTH_TEST);
 }
 
 void VRRender::initVR()
@@ -244,7 +242,7 @@ void VRRender::renderImage()
         vr::VRCompositor()->Submit(vr::Eye_Right, &composite, &rightRect);
     }
 
-    m_frame = m_leftBuffer->toImage();
+    m_frame = m_resolveBuffer->toImage();
     emit frameChanged(m_frame);
 
     m_frameCount += 1;
@@ -254,25 +252,6 @@ void VRRender::renderImage()
 
 void VRRender::release()
 {
-    SAFE_DELETE(m_caliBallTexture);
-    m_surface.destroy();
-    if(m_vao)
-        m_vao->destroy();
-    SAFE_DELETE(m_vao);
-
-    if(m_caliBallObj)
-        m_caliBallObj->destroy();
-    SAFE_DELETE(m_caliBallObj);
-
-    if(m_cbo)
-        m_cbo->destroy();
-    SAFE_DELETE(m_cbo);
-
-    if(m_uvbo)
-        m_uvbo->destroy();
-    SAFE_DELETE(m_uvbo);
-
-    SAFE_DELETE(m_shader);
     SAFE_DELETE(m_leftBuffer);
     SAFE_DELETE(m_rightBuffer);
     SAFE_DELETE(m_resolveBuffer);
@@ -301,23 +280,70 @@ void VRRender::updatePoses()
     }
 }
 
-void VRRender::renderEye(vr::Hmd_Eye eye, bool overUnder)
+void VRRender::renderEye(vr::Hmd_Eye eye)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
+    // be sure to activate shader when setting uniforms/drawing objects
+    lightingShader.bind();
+    lightingShader.setUniformValue("light.position", lightPos);
 
-    m_vao->bind();
-    m_shader->bind();
-    m_caliBallTexture->bind(0);
+    QMatrix4x4 model, view, projection;
+    if(eye == vr::Hmd_Eye::Eye_Left){
+        view = m_leftPose * m_hmdPose;
+        projection = m_leftProjection;
+    } else {
+        view = m_rightPose * m_hmdPose;
+        projection = m_rightProjection;
+    }
 
-    m_shader->setUniformValue("transform", viewProjection(eye));
-    m_shader->setUniformValue("leftEye", eye==vr::Eye_Left);
-    m_shader->setUniformValue("overUnder", overUnder);
-    glDrawArrays(GL_TRIANGLES, 0, m_vertCount);
-    m_caliBallTexture->release();
-    m_shader->release();
-    m_vao->release();
+    QVector4D eyePosition;
+    if(eye == vr::Hmd_Eye::Eye_Left)
+        eyePosition = view * QVector4D(0,0,0,1.0);
+    else
+        eyePosition = view * QVector4D(0,0,0,1.0);
 
+    lightingShader.setUniformValue("viewPos",  eyePosition);
+
+    // light properties
+    lightingShader.setUniformValue("light.ambient", QVector3D(0.2f, 0.2f, 0.2f));
+    lightingShader.setUniformValue("light.diffuse", QVector3D(0.5f, 0.5f, 0.5f));
+    lightingShader.setUniformValue("light.specular", QVector3D(1.0f, 1.0f, 1.0f));
+
+    // material properties
+    lightingShader.setUniformValue("material.shininess", 64.0f);
+    lightingShader.setUniformValue("projection", projection);
+    lightingShader.setUniformValue("view", view);
+    lightingShader.setUniformValue("model", model);
+
+    // bind diffuse map
+    glActiveTexture(GL_TEXTURE0);
+    m_pDiffuseMap->bind();
+
+    // bind specular map
+    glActiveTexture(GL_TEXTURE1);
+    m_pSpecularMap->bind();
+
+    {// render the cube
+        QOpenGLVertexArrayObject::Binder vaoBind(&cubeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    lightingShader.release();
+
+
+    // also draw the lamp object
+    lampShader.bind();
+    lampShader.setUniformValue("projection", projection);
+    lampShader.setUniformValue("view", view);
+    model = QMatrix4x4();
+    model.translate(lightPos);
+    model.scale(0.2f); // a smaller cube
+    lampShader.setUniformValue("model", model);
+    {
+        QOpenGLVertexArrayObject::Binder vaoBind(&lightVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    lampShader.release();
 }
 
 QMatrix4x4 VRRender::vrMatrixToQt(const vr::HmdMatrix34_t &mat)
@@ -345,12 +371,12 @@ void VRRender::glUniformMatrix4(GLint location, GLsizei count, GLboolean transpo
     m_openGLContext.functions()->glUniformMatrix4fv(location, count, transpose, value);
 }
 
-QMatrix4x4 VRRender::viewProjection(vr::Hmd_Eye eye, QMatrix4x4 matrix)
+QMatrix4x4 VRRender::viewProjection(vr::Hmd_Eye eye)
 {
     if (eye == vr::Eye_Left)
-        return m_leftProjection * m_leftPose * m_hmdPose * matrix;
+        return m_leftProjection * m_leftPose * m_hmdPose;
     else
-        return m_rightProjection * m_rightPose * m_hmdPose * matrix;
+        return m_rightProjection * m_rightPose * m_hmdPose;
 }
 
 QString VRRender::getTrackedDeviceString(vr::TrackedDeviceIndex_t device, vr::TrackedDeviceProperty prop, vr::TrackedPropertyError *error)
@@ -368,35 +394,46 @@ QString VRRender::getTrackedDeviceString(vr::TrackedDeviceIndex_t device, vr::Tr
     return result;
 }
 
-void VRRender::computeNormalVectors(size_t num_vertices)
-{
-    for (size_t i=0;i<num_vertices;++i){
-        GLfloat v1x = this->vertexData[i * 9];
-        GLfloat v1y = this->vertexData[i * 9 + 1];
-        GLfloat v1z = this->vertexData[i * 9 + 2];
-
-        GLfloat v2x = this->vertexData[i * 9 + 3];
-        GLfloat v2y = this->vertexData[i * 9 + 4];
-        GLfloat v2z = this->vertexData[i * 9 + 5];
-
-        GLfloat v3x = this->vertexData[i * 9 + 6];
-        GLfloat v3y = this->vertexData[i * 9 + 7];
-        GLfloat v3z = this->vertexData[i * 9 + 8];
-
-        GLfloat x1 = v2x - v1x, y1 = v2y - v1y, z1 = v2z - v1z;
-        GLfloat x2 = v3x - v1x, y2 = v3y - v1y, z2 = v3z - v1z;
-        GLfloat nx = y1 * z2 - z1 * y2;
-        GLfloat ny = z1 * x2 - x1 * z2;
-        GLfloat nz = x1 * y2 - y1 * x2;
-        for (int j=0;j<3;++j){
-            this->normalBuffer[i * 9 + j * 3] = nx;
-            this->normalBuffer[i * 9 + j * 3 + 1] = ny;
-            this->normalBuffer[i * 9 + j * 3 + 2] = nz;
-        }
-    }
-}
-
 QVector<GLfloat> VRRender::drawCircle(float x, float y, float z, float r, int lineSegmentCount)
 {
     return QVector<GLfloat>();
+}
+
+bool VRRender::createShader()
+{
+    bool success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/lighting_maps.vert");
+    if (!success) {
+        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lightingShader.log();
+        return success;
+    }
+
+    success = lightingShader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/lighting_maps.frag");
+    if (!success) {
+        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lightingShader.log();
+        return success;
+    }
+
+    success = lightingShader.link();
+    if(!success) {
+        qDebug() << "shaderProgram link failed!" << lightingShader.log();
+    }
+
+    success = lampShader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/lamp.vert");
+    if (!success) {
+        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lampShader.log();
+        return success;
+    }
+
+    success = lampShader.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/lamp.frag");
+    if (!success) {
+        qDebug() << "shaderProgram addShaderFromSourceFile failed!" << lampShader.log();
+        return success;
+    }
+
+    success = lampShader.link();
+    if(!success) {
+        qDebug() << "shaderProgram link failed!" << lampShader.log();
+    }
+
+    return success;
 }

@@ -17,8 +17,8 @@ Window {
         anchors.centerIn: parent
         fillColor: "gray"
         image: render.frame
-        width: render.frameSize.width
-        height: render.frameSize.height
+        width: parent.width
+        height: parent.height
 
         onRequestRender: {
             render.renderImage();

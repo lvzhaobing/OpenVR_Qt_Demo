@@ -18,7 +18,8 @@ SOURCES += \
         main.cpp \
         vr_render.cpp
 
-RESOURCES += qml.qrc
+RESOURCES += \
+    Demo.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
