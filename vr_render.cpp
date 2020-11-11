@@ -91,11 +91,17 @@ void VRRender::initGL()
 
     // load textures (we now use a utility function to keep the code more organized)
     // -----------------------------------------------------------------------------
-    m_pDiffuseMap = std::make_unique<QOpenGLTexture>(QImage(":/image/red_point.png"), QOpenGLTexture::GenerateMipMaps);
-    m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
-    m_pDiffuseMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
-    m_pDiffuseMap->setMinificationFilter(QOpenGLTexture::Linear);
-    m_pDiffuseMap->setMagnificationFilter(QOpenGLTexture::Linear);
+    caliBallTexture = std::make_unique<QOpenGLTexture>(QImage(":/image/point.png"), QOpenGLTexture::GenerateMipMaps);
+    caliBallTexture->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
+    caliBallTexture->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
+    caliBallTexture->setMinificationFilter(QOpenGLTexture::Linear);
+    caliBallTexture->setMagnificationFilter(QOpenGLTexture::Linear);
+
+    ballCenterTexture = std::make_unique<QOpenGLTexture>(QImage(":/image/red_point.png"), QOpenGLTexture::GenerateMipMaps);
+    ballCenterTexture->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::Repeat);
+    ballCenterTexture->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::Repeat);
+    ballCenterTexture->setMinificationFilter(QOpenGLTexture::Linear);
+    ballCenterTexture->setMagnificationFilter(QOpenGLTexture::Linear);
 
     // shader configuration
     // --------------------
@@ -196,8 +202,10 @@ void VRRender::renderImage()
         vr::VRCompositor()->Submit(vr::Eye_Right, &composite, &rightRect);
     }
 
-    m_frame = m_leftBuffer->toImage();
-    emit frameChanged(m_frame);
+    if(m_leftBuffer){
+        m_frame = m_leftBuffer->toImage();
+        emit frameChanged(m_frame);
+    }
 
     m_frameCount += 1;
     if(m_frameCount > 100)
@@ -276,7 +284,10 @@ void VRRender::renderEye(vr::Hmd_Eye eye)
 
     // bind diffuse map
     glActiveTexture(GL_TEXTURE0);
-    m_pDiffuseMap->bind();
+    caliBallTexture->bind();
+
+    glActiveTexture(GL_TEXTURE1);
+    ballCenterTexture->bind();
 
     {// render the cube
         QOpenGLVertexArrayObject::Binder vaoBind(&cubeVAO);

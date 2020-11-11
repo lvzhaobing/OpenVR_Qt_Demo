@@ -6,5 +6,6 @@
         <file>shader/shader.vert</file>
         <file>image/point.png</file>
         <file>image/red_point.png</file>
+        <file>image/green_point.png</file>
     </qresource>
 </RCC>

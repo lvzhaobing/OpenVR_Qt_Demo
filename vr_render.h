@@ -69,10 +69,11 @@ private:
     QOffscreenSurface m_surface;
     QOpenGLContext m_openGLContext;
 
-    QOpenGLShaderProgram lightingShader/*, lampShader*/;
+    QOpenGLShaderProgram lightingShader;
     QOpenGLBuffer vbo{QOpenGLBuffer::VertexBuffer};
-    QOpenGLVertexArrayObject cubeVAO/*, lightVAO*/;
-    std::unique_ptr<QOpenGLTexture> m_pDiffuseMap;
+    QOpenGLVertexArrayObject cubeVAO;
+    std::unique_ptr<QOpenGLTexture> caliBallTexture;
+    std::unique_ptr<QOpenGLTexture> ballCenterTexture;
 
     //OpenVR
     vr::IVRSystem *m_hmd;

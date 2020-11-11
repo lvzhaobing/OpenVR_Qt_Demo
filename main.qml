@@ -13,19 +13,15 @@ Window {
     }
 
     ImageView{
-        id: imageView
-        anchors.centerIn: parent
-        fillColor: "gray"
+        id:imageView
+        anchors.fill: parent
         image: render.frame
-        width: parent.width
-        height: parent.height
-
-        onRequestRender: {
-            render.renderImage();
-        }
     }
 
-    Component.onCompleted: {
-        render.renderImage();
+    Timer {
+        interval: 10;
+        running: true;
+        repeat: true
+        onTriggered: render.renderImage()
     }
 }
